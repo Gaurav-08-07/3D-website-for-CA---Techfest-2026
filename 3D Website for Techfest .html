@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Techfest 2026 · Campus Ambassador Program</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<style>
+  html{ font-smoothing:antialiased; }
+  :root{
+    --void:#0B0D10;
+    --panel:#13161B;
+    --panel-2:#1B1F26;
+    --line:#2A2F38;
+    --chrome:#EAEDF1;
+    --dim:#8B93A1;
+    --signal:#7C5CFF;
+    --signal-dim:#7C5CFF33;
+    --amber:#FF9F1C;
+    --vital:#FF3B5C;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--void);
+    color:var(--chrome);
+    font-family:'Inter',sans-serif;
+    overflow-x:hidden;
+  }
+  ::selection{ background:var(--signal); color:#fff; }
+
+  h1,h2,h3,.display{
+    font-family:'Rajdhani',sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.02em;
+    font-weight:700;
+  }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+
+  /* background circuit texture */
+  body::before{
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 64px 64px;
+    opacity:0.06;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:0 32px; position:relative; z-index:2;}
+
+  /* ---------- NAV ---------- */
+  nav{
+    position:fixed; top:0; left:0; right:0; z-index:50;
+    background:rgba(11,13,16,0.85);
+    backdrop-filter: blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-inner{
+    max-width:1180px; margin:0 auto; padding:16px 32px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .logo-group{ display:flex; align-items:center; gap:12px; }
+  .logo-mark{ width:34px; height:34px; }
+  .logo-text{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:19px; letter-spacing:0.03em; }
+  .logo-text span{ color:var(--signal); }
+  .logo-sub{ font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:0.12em; margin-top:-2px;}
+
+  .nav-links{ display:flex; align-items:center; gap:28px; }
+  .nav-links a{
+    color:var(--dim); text-decoration:none; font-size:13px;
+    font-family:'JetBrains Mono',monospace; letter-spacing:0.03em;
+    transition:color .2s;
+  }
+  .nav-links a:hover{ color:var(--chrome); }
+  .status-chip{
+    display:flex; align-items:center; gap:7px;
+    font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--amber);
+    letter-spacing:0.08em; border:1px solid #FF9F1C55; padding:5px 10px; border-radius:2px;
+  }
+  .status-dot{ width:6px; height:6px; border-radius:50%; background:var(--amber); animation:blink 1.4s infinite; }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:0.25;} }
+  .btn{
+    font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:0.05em;
+    color:var(--void); background:var(--signal); border:none; padding:10px 18px;
+    text-decoration:none; border-radius:2px; font-weight:600;
+    box-shadow:0 0 0 1px var(--signal), 0 0 24px var(--signal-dim);
+    transition:transform .15s ease, box-shadow .15s ease;
+    display:inline-block;
+  }
+  .btn:hover{ transform:translateY(-1px); box-shadow:0 0 0 1px var(--signal), 0 0 32px #7C5CFF66; }
+  .btn-ghost{
+    background:transparent; color:var(--chrome); box-shadow:none;
+    border:1px solid var(--line);
+  }
+  .btn-ghost:hover{ border-color:var(--signal); color:var(--signal); transform:none; }
+
+  @media (max-width:860px){ .nav-links{ display:none; } }
+
+  /* ---------- HERO ---------- */
+  header.hero{
+    padding:170px 0 90px;
+    position:relative;
+    overflow:hidden;
+    min-height:760px;
+  }
+  #hero-canvas-wrap{
+    position:absolute; inset:0; z-index:1;
+    background: radial-gradient(ellipse at 60% 30%, #171226 0%, var(--void) 65%);
+    transition:opacity .2s ease;
+  }
+  #hero-canvas-wrap canvas{ display:block; width:100%; height:100%; cursor:grab; touch-action:none; }
+  #hero-canvas-wrap canvas:active{ cursor:grabbing; }
+  .drag-hint{
+    position:absolute; right:32px; bottom:26px; z-index:2;
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--dim);
+    letter-spacing:0.12em; display:flex; align-items:center; gap:8px; pointer-events:none;
+    opacity:0.85;
+  }
+  .drag-hint .dot{ width:5px; height:5px; border-radius:50%; background:var(--signal); animation:blink 1.6s infinite; }
+  @media (max-width:900px){ .drag-hint{ display:none; } }
+
+  .cursor-glow{
+    position:fixed; top:0; left:0; width:420px; height:420px; margin:-210px 0 0 -210px;
+    border-radius:50%; background:radial-gradient(circle, #7C5CFF1f, transparent 70%);
+    pointer-events:none; z-index:3; will-change:transform;
+  }
+  @media (max-width:900px){ .cursor-glow{ display:none; } }
+
+  .tilt-el{ transition:transform .25s ease-out; will-change:transform; }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--signal);
+    letter-spacing:0.14em; margin-bottom:22px; display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{ content:''; width:26px; height:1px; background:var(--signal); display:block; }
+
+  .hero-grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:56px; align-items:start; }
+  @media (max-width:900px){ .hero-grid{ grid-template-columns:1fr; } }
+
+  h1.headline{
+    font-size:clamp(40px, 5.4vw, 74px);
+    line-height:0.98;
+    color:var(--chrome);
+  }
+  h1.headline em{
+    font-style:normal; color:var(--signal);
+    text-shadow:0 0 24px #7C5CFF66;
+  }
+  .hero-desc{
+    color:var(--dim); font-size:16.5px; line-height:1.65; max-width:520px; margin-top:26px;
+  }
+  .hero-cta{ display:flex; gap:14px; margin-top:36px; flex-wrap:wrap; }
+
+  /* vitals panel */
+  .vitals{
+    background:rgba(19,22,27,0.72); backdrop-filter:blur(10px); border:1px solid var(--line); border-radius:4px;
+    padding:22px; position:relative;
+  }
+  .vitals::before,.vitals::after{
+    content:''; position:absolute; width:16px; height:16px; border:1px solid var(--signal);
+  }
+  .vitals::before{ top:-1px; left:-1px; border-right:none; border-bottom:none; }
+  .vitals::after{ bottom:-1px; right:-1px; border-left:none; border-top:none; }
+  .vitals-title{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); letter-spacing:0.1em; margin-bottom:16px; display:flex; justify-content:space-between;}
+  .vitals-row{ display:flex; justify-content:space-between; align-items:baseline; padding:12px 0; border-top:1px solid var(--line); }
+  .vitals-row:first-of-type{ border-top:none; }
+  .vitals-label{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--dim); letter-spacing:0.05em; }
+  .vitals-value{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:22px; color:var(--chrome); }
+  .vitals-value.amber{ color:var(--amber); }
+
+  .pulse-wrap{ margin-top:80px; }
+  .pulse-wrap svg{ width:100%; height:60px; display:block; }
+  .pulse-line{
+    fill:none; stroke:var(--signal); stroke-width:1.6;
+    stroke-dasharray:6 4000; animation:pulse-run 5s linear infinite;
+    filter:drop-shadow(0 0 6px #7C5CFF);
+  }
+  @keyframes pulse-run{ to{ stroke-dashoffset:-4000; } }
+
+  /* ---------- SECTION shell ---------- */
+  section{ padding:100px 0; position:relative; border-top:1px solid var(--line); }
+  .sec-head{ display:flex; align-items:baseline; justify-content:space-between; gap:24px; margin-bottom:52px; flex-wrap:wrap; }
+  .sec-tag{ font-family:'JetBrains Mono',monospace; color:var(--signal); font-size:12px; letter-spacing:0.14em; }
+  h2.sec-title{ font-size:clamp(28px,3.4vw,42px); margin-top:8px; }
+  .sec-note{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--dim); max-width:280px; text-align:right; line-height:1.6; }
+  @media (max-width:700px){ .sec-note{ text-align:left; } }
+
+  /* ---------- ABOUT ---------- */
+  .about-grid{ display:grid; grid-template-columns:1fr 1fr; gap:48px; }
+  @media (max-width:860px){ .about-grid{ grid-template-columns:1fr; } }
+  .about-copy p{ color:var(--dim); line-height:1.75; font-size:15.5px; margin-bottom:16px; }
+  .about-copy strong{ color:var(--chrome); font-weight:600; }
+  .stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); }
+  .stat-cell{ background:var(--panel); padding:24px; }
+  .stat-num{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:34px; color:var(--signal); }
+  .stat-label{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--dim); letter-spacing:0.06em; margin-top:6px; }
+
+  /* ---------- ROLE ---------- */
+  .role-grid{ display:grid; grid-template-columns:1fr 1fr; gap:40px; }
+  @media (max-width:860px){ .role-grid{ grid-template-columns:1fr; } }
+  .duty{ display:flex; gap:16px; padding:20px 0; border-top:1px solid var(--line); }
+  .duty:first-child{ border-top:none; }
+  .duty-icon{ width:34px; height:34px; flex:none; border:1px solid var(--signal); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--signal); font-family:'JetBrains Mono',monospace; font-size:12px;}
+  .duty-title{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:18px; letter-spacing:0.02em; text-transform:uppercase;}
+  .duty-desc{ color:var(--dim); font-size:14.5px; margin-top:4px; line-height:1.6; }
+
+  .chip-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:36px; }
+  .chip{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--chrome);
+    border:1px solid var(--line); padding:8px 14px; border-radius:20px; background:var(--panel);
+  }
+  .chip::before{ content:'// '; color:var(--signal); }
+
+  /* ---------- REWARDS ---------- */
+  .rewards-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); border:1px solid var(--line); }
+  @media (max-width:860px){ .rewards-grid{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:560px){ .rewards-grid{ grid-template-columns:1fr; } }
+  .reward-card{ background:var(--panel); padding:28px 24px; min-height:180px; display:flex; flex-direction:column; justify-content:space-between; transition:background .2s; }
+  .reward-card:hover{ background:var(--panel-2); }
+  .reward-tier{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--amber); letter-spacing:0.1em; }
+  .reward-title{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:19px; margin-top:10px; text-transform:uppercase; }
+  .reward-desc{ color:var(--dim); font-size:13.5px; margin-top:10px; line-height:1.55; }
+
+  /* ---------- SEQUENCE ---------- */
+  .seq{ position:relative; padding-left:50px; }
+  .seq::before{ content:''; position:absolute; left:15px; top:6px; bottom:6px; width:1px; background:linear-gradient(var(--signal), var(--line)); }
+  .seq-item{ position:relative; padding-bottom:52px; }
+  .seq-item:last-child{ padding-bottom:0; }
+  .seq-num{
+    position:absolute; left:-50px; top:0; width:32px; height:32px; border-radius:50%;
+    background:var(--void); border:1px solid var(--signal); color:var(--signal);
+    display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:12px;
+  }
+  .seq-title{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:21px; text-transform:uppercase; }
+  .seq-desc{ color:var(--dim); font-size:14.5px; margin-top:6px; max-width:560px; line-height:1.6; }
+  .seq-tag{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--dim); margin-top:8px; letter-spacing:0.06em;}
+
+  /* ---------- FAQ ---------- */
+  .faq-item{ border-top:1px solid var(--line); }
+  .faq-item:last-child{ border-bottom:1px solid var(--line); }
+  .faq-q{
+    width:100%; text-align:left; background:none; border:none; color:var(--chrome);
+    font-family:'Rajdhani',sans-serif; font-weight:600; font-size:17px; text-transform:uppercase;
+    padding:22px 4px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+    letter-spacing:0.02em;
+  }
+  .faq-q .idx{ font-family:'JetBrains Mono',monospace; color:var(--signal); font-size:12px; margin-right:14px; }
+  .faq-q .plus{ font-family:'JetBrains Mono',monospace; color:var(--signal); font-size:18px; transition:transform .2s; }
+  .faq-item.open .plus{ transform:rotate(45deg); }
+  .faq-a{ max-height:0; overflow:hidden; transition:max-height .3s ease; }
+  .faq-item.open .faq-a{ max-height:200px; }
+  .faq-a p{ color:var(--dim); font-size:14.5px; line-height:1.65; padding:0 4px 22px 40px; }
+
+  /* ---------- CTA ---------- */
+  .cta-panel{
+    background:var(--panel); border:1px solid var(--line); padding:56px 48px;
+    display:flex; justify-content:space-between; align-items:center; gap:32px; flex-wrap:wrap;
+    position:relative; overflow:hidden;
+  }
+  .cta-panel::after{
+    content:''; position:absolute; right:-60px; top:-60px; width:220px; height:220px;
+    background:radial-gradient(circle, #7C5CFF33, transparent 70%);
+  }
+  .cta-panel h3{ font-size:clamp(24px,3vw,32px); max-width:460px; position:relative; z-index:2; }
+  .cta-actions{ display:flex; gap:14px; position:relative; z-index:2; flex-wrap:wrap; }
+
+  /* ---------- FOOTER ---------- */
+  footer{ padding:48px 0 40px; border-top:1px solid var(--line); }
+  .foot-inner{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px; }
+  .foot-note{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); max-width:520px; line-height:1.6; }
+  .foot-links{ display:flex; gap:20px; }
+  .foot-links a{ color:var(--dim); text-decoration:none; font-family:'JetBrains Mono',monospace; font-size:12px; }
+  .foot-links a:hover{ color:var(--signal); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="logo-group">
+      <svg class="logo-mark" viewBox="0 0 40 40" fill="none">
+        <path d="M4 4H34L30 12H18L16 18H27L23 26H13L8 36L2 34L4 4Z" fill="#7C5CFF"/>
+      </svg>
+      <div>
+        <div class="logo-text">TECH<span>FEST</span></div>
+        <div class="logo-sub">CA PROGRAM · IIT BOMBAY</div>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="#overview">Overview</a>
+      <a href="#role">Role</a>
+      <a href="#rewards">Rewards</a>
+      <a href="#sequence">Sequence</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <div class="status-chip"><span class="status-dot"></span>RECRUITING</div>
+      <a class="btn" href="https://ca.techfest.org/" target="_blank" rel="noopener">Apply</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div id="hero-canvas-wrap"></div>
+  <div class="drag-hint"><span class="dot"></span>DRAG TO ROTATE · SCROLL TO DIVE</div>
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">TECHFEST 2026 // IIT BOMBAY — COLLEGE AMBASSADOR PROGRAM</div>
+        <h1 class="headline">RUN THE SIGNAL<br>BETWEEN YOUR CAMPUS<br>AND <em>ASIA'S LARGEST</em><br>TECH FEST.</h1>
+        <p class="hero-desc">
+          Every festival needs a nervous system — a network that carries the signal from IIT Bombay
+          out to every campus in the country. As a College Ambassador, you're one of its nodes: representing
+          Techfest at your institution, running the campaign, and climbing a live leaderboard for real
+          internship credit.
+        </p>
+        <div class="hero-cta">
+          <a class="btn" href="https://ca.techfest.org/" target="_blank" rel="noopener">Initiate Application →</a>
+          <a class="btn btn-ghost" href="#role">View Role Brief</a>
+        </div>
+      </div>
+
+      <div class="vitals">
+        <div class="vitals-title"><span>SYSTEM READOUT</span><span>LIVE</span></div>
+        <div class="vitals-row">
+          <span class="vitals-label">EDITION</span>
+          <span class="vitals-value">30TH</span>
+        </div>
+        <div class="vitals-row">
+          <span class="vitals-label">FOOTFALL</span>
+          <span class="vitals-value">180,000+</span>
+        </div>
+        <div class="vitals-row">
+          <span class="vitals-label">EVENTS · DURATION</span>
+          <span class="vitals-value">300+ / 3 DAYS</span>
+        </div>
+        <div class="vitals-row">
+          <span class="vitals-label">CA NETWORK</span>
+          <span class="vitals-value amber">2,500+ COLLEGES</span>
+        </div>
+        <div class="vitals-row">
+          <span class="vitals-label">INTL REACH</span>
+          <span class="vitals-value amber">500+ UNIVERSITIES</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pulse-wrap">
+      <svg viewBox="0 0 1200 60" preserveAspectRatio="none">
+        <path class="pulse-line" d="M0,30 L200,30 L230,10 L260,50 L290,30 L340,30 L365,20 L385,40 L405,30 L1200,30"/>
+      </svg>
+    </div>
+  </div>
+</header>
+
+<section id="overview">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-tag">01 · SYSTEM OVERVIEW</div>
+        <h2 class="sec-title">What you're plugging into</h2>
+      </div>
+      <div class="sec-note">Figures reflect Techfest's most recent published program data.</div>
+    </div>
+    <div class="about-grid">
+      <div class="about-copy">
+        <p>
+          <strong>Techfest, IIT Bombay</strong> is Asia's largest science and technology festival —
+          held under the patronage of bodies including UNESCO and UNICEF, and backed by national
+          initiatives like Make in India and Digital India. It draws students, innovators, and
+          researchers from across the globe onto one campus for three days.
+        </p>
+        <p>
+          The <strong>College Ambassador Program</strong> is the pan-India network that makes that reach
+          possible — a body of tech-savvy student representatives who carry Techfest's brand into
+          their own institutions, act as the first point of contact for their peers, and get scored
+          on a live leaderboard for real internship credit in return.
+        </p>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-cell"><div class="stat-num">2,500+</div><div class="stat-label">INDIAN COLLEGES IN NETWORK</div></div>
+        <div class="stat-cell"><div class="stat-num">500+</div><div class="stat-label">INTERNATIONAL UNIVERSITIES</div></div>
+        <div class="stat-cell"><div class="stat-num">180K+</div><div class="stat-label">ON-GROUND FOOTFALL</div></div>
+        <div class="stat-cell"><div class="stat-num">300+</div><div class="stat-label">EVENTS ACROSS 3 DAYS</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="role">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-tag">02 · CORE PROCESSES</div>
+        <h2 class="sec-title">Your day-to-day runtime</h2>
+      </div>
+      <div class="sec-note">These run in parallel, not in sequence — pick up whichever the moment calls for.</div>
+    </div>
+    <div class="role-grid">
+      <div>
+        <div class="duty">
+          <div class="duty-icon">01</div>
+          <div>
+            <div class="duty-title">Represent</div>
+            <div class="duty-desc">Be Techfest's face at your institution — the name people connect to the festival on your campus.</div>
+          </div>
+        </div>
+        <div class="duty">
+          <div class="duty-icon">02</div>
+          <div>
+            <div class="duty-title">Respond</div>
+            <div class="duty-desc">Act as the first point of contact for any student who needs information about Techfest, and help them get it.</div>
+          </div>
+        </div>
+        <div class="duty">
+          <div class="duty-icon">03</div>
+          <div>
+            <div class="duty-title">Campaign</div>
+            <div class="duty-desc">Drive outreach through your campus and social channels, and complete the tasks that move you up the leaderboard.</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p style="color:var(--dim); font-size:14.5px; line-height:1.7; margin-bottom:8px;">
+          Work spans whichever domain fits your skill set — no single track is mandatory:
+        </p>
+        <div class="chip-row">
+          <div class="chip">Design Thinking</div>
+          <div class="chip">Digital Marketing</div>
+          <div class="chip">Event Management</div>
+          <div class="chip">Social Media Marketing</div>
+          <div class="chip">Web Development</div>
+        </div>
+        <p style="color:var(--dim); font-size:13.5px; line-height:1.6; margin-top:28px;">
+          Hours are flexible and fully remote until Techfest itself — where top performers activate
+          on-ground as event coordinators.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="rewards">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-tag">03 · UNLOCKED MODULES</div>
+        <h2 class="sec-title">What climbing the leaderboard gets you</h2>
+      </div>
+      <div class="sec-note">Tiers are rank-based — the higher you climb, the more you unlock.</div>
+    </div>
+    <div class="rewards-grid">
+      <div class="reward-card">
+        <div><div class="reward-tier">ALL CAs</div><div class="reward-title">Internship Certificate</div></div>
+        <div class="reward-desc">A rank-based internship certificate issued directly by Techfest, IIT Bombay.</div>
+      </div>
+      <div class="reward-card">
+        <div><div class="reward-tier">ALL CAs</div><div class="reward-title">Offer &amp; Completion Letter</div></div>
+        <div class="reward-desc">Formal documentation of your role, from onboarding through program completion.</div>
+      </div>
+      <div class="reward-card">
+        <div><div class="reward-tier">ALL CAs</div><div class="reward-title">National Network</div></div>
+        <div class="reward-desc">Direct access to a network spanning 2,500+ Indian colleges and 500+ international universities.</div>
+      </div>
+      <div class="reward-card">
+        <div><div class="reward-tier">TOP 100</div><div class="reward-title">Letter of Recommendation</div></div>
+        <div class="reward-desc">A formal LOR from Techfest, IIT Bombay — for the leaderboard's top 100 performers.</div>
+      </div>
+      <div class="reward-card">
+        <div><div class="reward-tier">TOP 25</div><div class="reward-title">Accommodation, 50% Off</div></div>
+        <div class="reward-desc">A 50% discount on on-campus accommodation for Techfest itself.</div>
+      </div>
+      <div class="reward-card">
+        <div><div class="reward-tier">TOP 10</div><div class="reward-title">Free Accommodation</div></div>
+        <div class="reward-desc">Fully covered stay at IIT Bombay during the festival, plus coordinator access, merchandise, and a badge.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="sequence">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-tag">04 · ACTIVATION SEQUENCE</div>
+        <h2 class="sec-title">How the program actually runs</h2>
+      </div>
+      <div class="sec-note">This part genuinely is a sequence — each stage unlocks the next.</div>
+    </div>
+    <div class="seq">
+      <div class="seq-item">
+        <div class="seq-num">01</div>
+        <div class="seq-title">Register</div>
+        <div class="seq-desc">Sign up at ca.techfest.org — registration is mandatory and free of cost.</div>
+        <div class="seq-tag">// NO APPLICATION FEE</div>
+      </div>
+      <div class="seq-item">
+        <div class="seq-num">02</div>
+        <div class="seq-title">Onboard</div>
+        <div class="seq-desc">Get your CA toolkit, campaign brief, and access to the leaderboard dashboard.</div>
+      </div>
+      <div class="seq-item">
+        <div class="seq-num">03</div>
+        <div class="seq-title">Campaign</div>
+        <div class="seq-desc">Run outreach on your campus, complete tasks, and climb the rankings — at your own pace and hours.</div>
+      </div>
+      <div class="seq-item">
+        <div class="seq-num">04</div>
+        <div class="seq-title">Techfest, Live</div>
+        <div class="seq-desc">Top-ranked CAs activate on-ground at IIT Bombay as event coordinators during the festival.</div>
+      </div>
+      <div class="seq-item">
+        <div class="seq-num">05</div>
+        <div class="seq-title">Debrief</div>
+        <div class="seq-desc">Certificates, letters, and rank-based rewards are issued once the program closes.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-tag">05 · SUPPORT LOG</div>
+        <h2 class="sec-title">Frequently asked</h2>
+      </div>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-q"><span><span class="idx">Q1</span>Who can apply to become a CA?</span><span class="plus">+</span></button>
+        <div class="faq-a"><p>Any currently enrolled college student is eligible — there's no restriction by year, branch, or institution type.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q"><span><span class="idx">Q2</span>Is there any registration fee?</span><span class="plus">+</span></button>
+        <div class="faq-a"><p>No. Registration through ca.techfest.org is completely free.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q"><span><span class="idx">Q3</span>How is the leaderboard ranking decided?</span><span class="plus">+</span></button>
+        <div class="faq-a"><p>Rank is driven by completed tasks and campaign activity — the more you contribute, the higher you climb.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q"><span><span class="idx">Q4</span>What's the time commitment?</span><span class="plus">+</span></button>
+        <div class="faq-a"><p>Fully remote with flexible hours until the festival itself, when top performers can choose to work on-ground.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="cta-panel">
+      <h3>Registration for the 2026 cycle is open. The leaderboard resets — get there first.</h3>
+      <div class="cta-actions">
+        <a class="btn" href="https://ca.techfest.org/" target="_blank" rel="noopener">Initiate Application →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div class="logo-group">
+      <svg class="logo-mark" viewBox="0 0 40 40" fill="none" width="26" height="26">
+        <path d="M4 4H34L30 12H18L16 18H27L23 26H13L8 36L2 34L4 4Z" fill="#7C5CFF"/>
+      </svg>
+      <div class="logo-text" style="font-size:15px;">TECH<span>FEST</span></div>
+    </div>
+    <div class="foot-note">
+      Concept redesign of the Techfest, IIT Bombay College Ambassador Program landing page. Not an
+      official Techfest property — for official registration and terms, visit
+      <a href="https://ca.techfest.org/" target="_blank" rel="noopener" style="color:var(--signal);">ca.techfest.org</a>.
+    </div>
+    <div class="foot-links">
+      <a href="#overview">Overview</a>
+      <a href="#faq">FAQ</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('.faq-item').forEach(item=>{
+    item.querySelector('.faq-q').addEventListener('click', ()=>{
+      const isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));
+      if(!isOpen) item.classList.add('open');
+    });
+  });
+
+  /* ================= CURSOR GLOW ================= */
+  const glow = document.createElement('div');
+  glow.className = 'cursor-glow';
+  document.body.appendChild(glow);
+  window.addEventListener('mousemove', (e)=>{
+    glow.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+  }, { passive:true });
+
+  /* ================= 3D CARD TILT ================= */
+  function make3DTilt(selector, intensity){
+    document.querySelectorAll(selector).forEach(card=>{
+      card.classList.add('tilt-el');
+      card.style.transformStyle = 'preserve-3d';
+      card.addEventListener('mousemove', (e)=>{
+        const r = card.getBoundingClientRect();
+        const px = (e.clientX - r.left) / r.width - 0.5;
+        const py = (e.clientY - r.top) / r.height - 0.5;
+        card.style.transform =
+          `perspective(700px) rotateY(${px*intensity}deg) rotateX(${-py*intensity}deg) translateZ(8px)`;
+      });
+      card.addEventListener('mouseleave', ()=>{
+        card.style.transform = 'perspective(700px) rotateY(0deg) rotateX(0deg) translateZ(0px)';
+      });
+    });
+  }
+  make3DTilt('.reward-card', 9);
+  make3DTilt('.stat-cell', 7);
+  make3DTilt('.vitals', 4);
+
+  /* ================= 3D HERO SCENE ================= */
+  (function initHeroScene(){
+    const wrap = document.getElementById('hero-canvas-wrap');
+    if (!wrap || typeof THREE === 'undefined') return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let renderer, scene, camera, logoGroup, particles, lineMesh;
+    let dragging = false, lastX = 0, lastY = 0;
+    let targetRotY = 0.6, targetRotX = -0.15;
+    let currentRotY = targetRotY, currentRotX = targetRotX;
+    let mouseNX = 0, mouseNY = 0;
+    let scrollRatio = 0;
+
+    try {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 200);
+      camera.position.set(0, 0, 24);
+
+      renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+      wrap.appendChild(renderer.domElement);
+
+      // lights
+      scene.add(new THREE.AmbientLight(0x33364a, 0.9));
+      const violetLight = new THREE.PointLight(0x7C5CFF, 2.2, 60);
+      violetLight.position.set(-12, 8, 14);
+      scene.add(violetLight);
+      const amberLight = new THREE.PointLight(0xFF9F1C, 1.4, 60);
+      amberLight.position.set(14, -6, 10);
+      scene.add(amberLight);
+      const key = new THREE.DirectionalLight(0xffffff, 0.5);
+      key.position.set(4, 10, 12);
+      scene.add(key);
+
+      // ---- extruded 3D logo, built from the same path as the flat mark ----
+      const pts = [[4,4],[34,4],[30,12],[18,12],[16,18],[27,18],[23,26],[13,26],[8,36],[2,34]];
+      const cx = 17, cy = 19, s = 0.36;
+      const shape = new THREE.Shape();
+      shape.moveTo((pts[0][0]-cx)*s, -(pts[0][1]-cy)*s);
+      for (let i = 1; i < pts.length; i++) shape.lineTo((pts[i][0]-cx)*s, -(pts[i][1]-cy)*s);
+      shape.closePath();
+
+      const extrude = new THREE.ExtrudeGeometry(shape, {
+        depth: 5.5, bevelEnabled: true, bevelThickness: 0.55, bevelSize: 0.35, bevelSegments: 4, curveSegments: 8
+      });
+      extrude.center();
+
+      const logoMat = new THREE.MeshStandardMaterial({
+        color: 0x8a6bff, metalness: 0.78, roughness: 0.22,
+        emissive: 0x2c1b6e, emissiveIntensity: 0.55
+      });
+      const logoMesh = new THREE.Mesh(extrude, logoMat);
+
+      // thin amber back-plate for a "cyborg plating" edge glow
+      const edgeGeo = new THREE.EdgesGeometry(extrude);
+      const edgeMat = new THREE.LineBasicMaterial({ color: 0xFF9F1C, transparent:true, opacity:0.35 });
+      const edges = new THREE.LineSegments(edgeGeo, edgeMat);
+
+      logoGroup = new THREE.Group();
+      logoGroup.add(logoMesh);
+      logoGroup.add(edges);
+      logoGroup.rotation.set(targetRotX, targetRotY, 0);
+      scene.add(logoGroup);
+
+      // ---- particle network field ----
+      const COUNT = 220;
+      const posArr = new Float32Array(COUNT * 3);
+      for (let i = 0; i < COUNT; i++){
+        const r = 16 + Math.random() * 14;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+        posArr[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+        posArr[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+        posArr[i*3+2] = r * Math.cos(phi);
+      }
+      const particleGeo = new THREE.BufferGeometry();
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+      const particleMat = new THREE.PointsMaterial({
+        color: 0x9d84ff, size: 0.22, transparent:true, opacity:0.7,
+        blending: THREE.AdditiveBlending, depthWrite:false
+      });
+      particles = new THREE.Points(particleGeo, particleMat);
+      scene.add(particles);
+
+      // sparse connecting lines for a "network" feel
+      const linePos = [];
+      for (let i = 0; i < COUNT; i += 3){
+        const j = (i + 7) % COUNT;
+        linePos.push(posArr[i*3], posArr[i*3+1], posArr[i*3+2]);
+        linePos.push(posArr[j*3], posArr[j*3+1], posArr[j*3+2]);
+      }
+      const lineGeo = new THREE.BufferGeometry();
+      lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(linePos), 3));
+      const lineMat = new THREE.LineBasicMaterial({ color:0x7C5CFF, transparent:true, opacity:0.08 });
+      lineMesh = new THREE.LineSegments(lineGeo, lineMat);
+      scene.add(lineMesh);
+
+      // ---- interaction: drag to rotate ----
+      const dom = renderer.domElement;
+      const onDown = (x,y)=>{ dragging = true; lastX = x; lastY = y; };
+      const onMove = (x,y)=>{
+        if (!dragging) return;
+        const dx = x - lastX, dy = y - lastY;
+        targetRotY += dx * 0.006;
+        targetRotX = Math.max(-0.9, Math.min(0.9, targetRotX + dy * 0.006));
+        lastX = x; lastY = y;
+      };
+      const onUp = ()=>{ dragging = false; };
+
+      dom.addEventListener('pointerdown', (e)=>{ onDown(e.clientX, e.clientY); dom.setPointerCapture(e.pointerId); });
+      dom.addEventListener('pointermove', (e)=>{ onMove(e.clientX, e.clientY); });
+      dom.addEventListener('pointerup', onUp);
+      dom.addEventListener('pointerleave', onUp);
+
+      // ---- mouse parallax (only when not dragging) ----
+      window.addEventListener('mousemove', (e)=>{
+        mouseNX = (e.clientX / window.innerWidth) - 0.5;
+        mouseNY = (e.clientY / window.innerHeight) - 0.5;
+      }, { passive:true });
+
+      // ---- scroll: fade + dolly ----
+      window.addEventListener('scroll', ()=>{
+        scrollRatio = Math.min(1, window.scrollY / (window.innerHeight * 0.9));
+        wrap.style.opacity = String(1 - scrollRatio * 0.85);
+      }, { passive:true });
+
+      // ---- resize ----
+      window.addEventListener('resize', ()=>{
+        camera.aspect = wrap.clientWidth / wrap.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+      });
+
+      // ---- render loop ----
+      const clock = new THREE.Clock();
+      function animate(){
+        requestAnimationFrame(animate);
+        const dt = clock.getDelta();
+
+        if (!reduceMotion && !dragging) targetRotY += dt * 0.12;
+
+        currentRotY += (targetRotY - currentRotY) * 0.08;
+        currentRotX += (targetRotX - currentRotX) * 0.08;
+        logoGroup.rotation.set(currentRotX, currentRotY, 0);
+
+        if (!reduceMotion){
+          particles.rotation.y += dt * 0.02;
+          lineMesh.rotation.y = particles.rotation.y;
+        }
+
+        camera.position.x += ((mouseNX * 5) - camera.position.x) * 0.04;
+        camera.position.y += ((-mouseNY * 3) - camera.position.y) * 0.04;
+        camera.position.z = 24 + scrollRatio * 6;
+        camera.lookAt(0, 0, 0);
+
+        renderer.render(scene, camera);
+      }
+      animate();
+    } catch(err){
+      // Fallback: keep the CSS gradient background if WebGL isn't available
+      console.warn('3D hero scene unavailable, showing fallback background.', err);
+    }
+  })();
+</script>
+
+</body>
+</html>
